@@ -1,5 +1,7 @@
 # Deploy SOMAS v1.3 on personal Free plans
 
+> For the existing `somasai` Worker using `npx wrangler deploy` and custom domain `smart.somas.ai`, use [the Worker deployment guide](DEPLOY_CLOUDFLARE_WORKER.md) for frontend/gateway settings instead of section 4 below. The Vercel/Neon guidance remains applicable. No backend/database changes are required for the Worker fix.
+
 Architecture: Cloudflare Pages and Pages Functions → native Vercel Python/FastAPI → Neon PostgreSQL. Use the existing private GitHub repository. Vercel Hobby is intended here for personal, non-commercial development. Do not select paid plans or paid add-ons. No deployment or hosted migration has been performed by these source changes.
 
 ## 1. Local validation

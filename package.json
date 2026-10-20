@@ -4,8 +4,9 @@
   "version": "1.3.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev frontend --port 8788",
-    "test": "node --test tests/proxy.test.js"
+    "dev": "wrangler dev --port 8788 --local-upstream localhost:8788 --upstream-protocol http",
+    "deploy": "wrangler deploy",
+    "test": "node --test tests/proxy.test.js tests/worker.test.js"
   },
   "devDependencies": {"wrangler": "^4.0.0"}
 }

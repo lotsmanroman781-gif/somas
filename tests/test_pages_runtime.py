@@ -11,7 +11,8 @@ import httpx
 import pytest
 
 
-async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
+@pytest.mark.parametrize("runtime", ["pages", "worker"])
+async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path, runtime):
     if os.getenv("SOMAS_TEST_PAGES_RUNTIME") != "1":
         pytest.skip(
             "Set SOMAS_TEST_PAGES_RUNTIME=1 to run the real Wrangler runtime check"
@@ -34,6 +35,14 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
         CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV="false",
     )
     processes = []
+    runtime_root = Path.cwd()
+    if runtime == "pages":
+        # Pages requires a standard config filename and cannot load a Worker config.
+        runtime_root = tmp_path / "pages"
+        runtime_root.mkdir()
+        for directory in ("frontend", "functions"):
+            shutil.copytree(directory, runtime_root / directory)
+    separator = "=" if runtime == "pages" else ":"
     with (tmp_path / "local-runtime.log").open(
         "w+", encoding="utf8", errors="replace"
     ) as log:
@@ -48,9 +57,20 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
                     [
                         node,
                         str(wrangler),
-                        "pages",
-                        "dev",
-                        "frontend",
+                        *(
+                            ["pages", "dev", "frontend"]
+                            if runtime == "pages"
+                            else [
+                                "dev",
+                                "--config",
+                                "wrangler.json",
+                                "--local",
+                                "--local-upstream",
+                                "127.0.0.1:18788",
+                                "--upstream-protocol",
+                                "http",
+                            ]
+                        ),
                         "--ip",
                         "127.0.0.1",
                         "--port",
@@ -59,16 +79,17 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
                         "0",
                         "--compatibility-date",
                         "2026-10-20",
-                        "--binding",
-                        "BACKEND_ORIGIN=http://127.0.0.1:18082",
-                        "--binding",
-                        "ALLOW_LOCAL_BACKEND=1",
-                        "--binding",
-                        "SOMAS_PROXY_SECRET=" + secret,
+                        "--binding" if runtime == "pages" else "--var",
+                        "BACKEND_ORIGIN" + separator + "http://127.0.0.1:18082",
+                        "--binding" if runtime == "pages" else "--var",
+                        "ALLOW_LOCAL_BACKEND" + separator + "1",
+                        "--binding" if runtime == "pages" else "--var",
+                        "SOMAS_PROXY_SECRET" + separator + secret,
                     ],
                     env=env,
                     stdout=log,
                     stderr=log,
+                    cwd=runtime_root,
                 )
             )
             async with httpx.AsyncClient(
@@ -82,7 +103,15 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
                     try:
                         response = await client.get("/api/auth/me")
                         if response.status_code == 401:
+                            assert (
+                                "application/json" in response.headers["content-type"]
+                            )
                             break
+                        if response.status_code == 403:
+                            pytest.fail(
+                                "Runtime gateway rejected local request: "
+                                + response.text
+                            )
                     except httpx.TransportError:
                         pass
                     await asyncio.sleep(0.2)
@@ -92,7 +121,15 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
                     pytest.fail(
                         "Local Pages runtime did not become ready: " + log.read()
                     )
-                assert (await client.get("/")).status_code == 200
+                homepage = await client.get("/")
+                assert homepage.status_code == 200
+                assert "SOMAS" in homepage.text
+                assert "text/html" in homepage.headers["content-type"]
+                assert (
+                    "default-src 'self'" in homepage.headers["content-security-policy"]
+                )
+                if runtime == "worker":
+                    assert (await client.get("/static/missing.js")).status_code == 404
                 assert (
                     "javascript"
                     in (await client.get("/static/app.js")).headers["content-type"]

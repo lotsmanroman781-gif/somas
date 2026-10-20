@@ -1,5 +1,7 @@
 # SOMAS MVP v1.3
 
+For the existing **somasai** Cloudflare Worker at **smart.somas.ai**, follow [DEPLOY_CLOUDFLARE_WORKER.md](DEPLOY_CLOUDFLARE_WORKER.md). `wrangler deploy` now publishes the frontend assets and the shared secure API proxy together; Vercel and Neon remain the backend/database. `npm run dev` runs the Worker locally.
+
 SOMAS (Self-Organizing Multi-Agent System) is a research application: a Manager designs a specialist team around a business objective. Each authenticated person owns a private Manager, organizations, specialists, independently trainable NumPy policies, draft runs, and training history.
 
 The v1.3 deployment target is **Cloudflare Pages Free → Pages Functions `/api/*` → native FastAPI on Vercel Hobby → PostgreSQL on Neon Free** for personal non-commercial development. SQLAlchemy 2.x uses async psycopg 3 throughout; Alembic owns schema changes. The same `app/main.py` runs locally and on Vercel with Python 3.12. MongoDB and SQLite are not runtime databases.
