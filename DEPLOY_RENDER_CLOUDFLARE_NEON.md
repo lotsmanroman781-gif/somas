@@ -1,5 +1,7 @@
 # Deploy SOMAS v1.2 using free plans
 
+> Historical v1.2 reference only. v1.3 replaces Render with Vercel and removes `render.yaml`. Do not apply the backend/proxy settings below to v1.3; `RENDER_BACKEND_ORIGIN` is no longer used. Follow [the current Vercel deployment guide](DEPLOY_VERCEL_CLOUDFLARE_NEON.md), including its separate reviewed migration procedure. The remaining text records the previous deployment architecture.
+
 Target: Cloudflare Pages Free frontend and Functions, Render Free Python web service, Neon Free PostgreSQL. Use the existing **private** GitHub repository. This guide prepares a research MVP deployment; it does not claim an audited production service or unlimited free capacity. No deployment is performed by these files.
 
 ## 1. Prepare and test locally
@@ -61,6 +63,14 @@ Review staged files before committing. No `.env`, `.dev.vars`, credentials, SQLi
 7. Confirm the dashboard still shows Free. Neon usage quotas and UI can change: verify the [current Free plan](https://neon.com/pricing) and [connection documentation](https://neon.com/docs/get-started/connect-neon). Do not upgrade automatically when a quota is reached.
 
 Neon can suspend idle compute. A database wake-up can add latency. Data persists independently of Render restarts. This setup needs neither a Render disk nor a second database. Do not configure MongoDB Atlas, D1, or Render Postgres for this release.
+
+Before initializing a new database, you can verify connectivity without changing any data:
+
+```powershell
+python scripts/check_database.py
+```
+
+Only `DATABASE_URL` is required for this check. Set it privately in your shell; do not paste it into output or commit it. The helper uses a read-only transaction and never displays connection details. After you intentionally initialize SOMAS with `python -m alembic upgrade head`, run `python scripts/check_database.py --schema`; expected revision is `0001_v12`. Neither check imports data or creates tables. If this Neon database already contains unrelated tables named like SOMAS tables, use a dedicated database/branch and review migrations before applying them; do not use `alembic stamp` to bypass schema validation.
 
 ## 4. Create the Render Free backend
 

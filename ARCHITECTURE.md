@@ -1,4 +1,4 @@
-# SOMAS v1.2 architecture and research notes
+# SOMAS v1.3 architecture and research notes
 
 ## Runtime
 
@@ -6,7 +6,7 @@
 flowchart LR
     Browser -->|same-origin cookies + CSRF| Pages[Cloudflare Pages frontend]
     Pages --> Gateway[Pages Functions /api/*]
-    Gateway -->|HTTPS + private proxy secret| API[FastAPI on Render]
+    Gateway -->|HTTPS + private proxy secret| API[Native FastAPI on Vercel]
     API -->|SQLAlchemy async / psycopg 3 / TLS| PG[Neon PostgreSQL]
     API --> Encoder[Deterministic feature encoder]
     Encoder --> Manager[Manager-owned NumPy filter]
@@ -17,9 +17,9 @@ flowchart LR
     Human -->|bounded SGD; version compare-and-set| PG
 ```
 
-Static assets live in `frontend/`; `functions/api/[[path]].js` is only an API gateway. Python, NumPy, training, and all database operations run on Render. All durable state lives in PostgreSQL. SQLAlchemy's async engine uses psycopg 3, at most five pooled connections per process, pre-ping, disabled prepared statements for pooler compatibility, and transaction-local statement/lock timeouts. Remote connections require TLS.
+Static assets live in `frontend/`; `functions/api/[[path]].js` is only an API gateway. Python, NumPy, training, and database operations run in the existing native `app/main.py` FastAPI application on Vercel. All durable state lives in PostgreSQL. Vercel uses psycopg 3 with SQLAlchemy NullPool and requires a Neon pooled TLS URL: transactions close client connections back to the external pooler rather than retaining idle connections per warm instance. Local development keeps at most five pooled connections per process with pre-ping. Both modes disable prepared statements for pooler compatibility and use transaction-local statement/lock timeouts. Remote connections require TLS.
 
-Alembic is the only schema-management path. `0001_v12` contains frozen PostgreSQL DDL; it does not import evolving runtime models. Startup checks the Alembic revision. Deployment runs migrations before Uvicorn; a transaction-scoped PostgreSQL advisory lock serializes migrations. Runtime schema creation and SQLite/MongoDB fallbacks do not exist.
+Alembic is the only schema-management path. `0001_v12` contains frozen PostgreSQL DDL; it does not import evolving runtime models. Native FastAPI lifespan startup validates this revision and shutdown disposes the engine. Imports, builds and requests never apply migrations. A separately reviewed local command or manually dispatched GitHub workflow upgrades schema; a transaction-scoped PostgreSQL advisory lock serializes migration transactions. No v1.3 schema change is needed. Runtime schema creation and SQLite/MongoDB fallbacks do not exist.
 
 ## Relational schema
 
@@ -59,13 +59,13 @@ The hypothesis is that learned pre-LLM controllers improve organizational routin
 
 ## Browser and deployment security
 
-The browser calls only the Pages origin. Pages Functions accepts only `/api/*`, fixes destinations to the configured HTTPS `*.onrender.com` origin, disallows credentials/path/query in that origin, forwards cookies and CSRF, blocks redirects, strips hop-by-hop/CORS response headers and cookie Domain overrides, and disables private response caching. Local HTTP is available only with explicit `ALLOW_LOCAL_BACKEND=1`. Static CSP and XSS escaping remain intact.
+The browser calls only the Pages origin. Pages Functions accepts only `/api/*`, requires HTTPS `BACKEND_ORIGIN` to match the exact approved `.vercel.app` hostname in `APPROVED_BACKEND_HOSTNAME`, disallows credentials/path/query/ports in that origin, forwards cookies and CSRF, blocks redirects, strips hop-by-hop/CORS response headers, rejects cookie Domain overrides, and disables private response caching. Local loopback HTTP is available only with explicit `ALLOW_LOCAL_BACKEND=1`. Static CSP and XSS escaping remain intact.
 
-The proxy overwrites client identity and gateway-secret headers. Render verifies a shared 32+ character secret before serving API traffic and compares mutating browser Origins against an exact allowlist. Cookies are HttpOnly, Secure on HTTPS, SameSite=Strict, Path=/, with no Domain override. No credentialed cross-origin CORS is enabled. Forwarded protocol headers are not blindly trusted; Render uses `SOMAS_SECURE_COOKIES=1` and Uvicorn disables proxy-header trust.
+The proxy overwrites client identity and gateway-secret headers. FastAPI verifies a shared 32+ character secret before serving API traffic and compares mutating browser Origins against an exact frontend allowlist. Cookies are HttpOnly, Secure on Vercel/HTTPS, SameSite=Strict, Path=/, with no Domain override. No credentialed cross-origin CORS is enabled. Forwarded protocol headers are not blindly trusted; Vercel forces secure cookies and requires gateway/origin configuration even if the cookie flag is accidentally omitted.
 
 Passwords retain salted PBKDF2-HMAC-SHA256 with 600,000 iterations, executed in a worker thread. Sessions store only token hashes, expire after seven days, and are checked against the user's session epoch. Password updates lock out concurrent session issuance and atomically revoke existing sessions. Login/signup and account request limits live in PostgreSQL; expired counters are cleaned opportunistically. JSON input is capped at 32 KiB and paginated reads at 100 rows. Request logs contain only status and duration, not URL queries, email, business text or secrets; SQLAlchemy hides bound parameters.
 
-Isolation is application authorization plus database constraints, not PostgreSQL row-level security. Do not grant users direct database access. The deployment role must manage schema for startup migrations; a separately privileged migration role and restricted runtime role would further reduce privileges. No production security audit, email verification, recovery provider, shared invitations, external connectors or continuous background execution is included. Monitor free-tier database growth from immutable policy snapshots and histories.
+Isolation is application authorization plus database constraints, not PostgreSQL row-level security. Do not grant users direct database access. Only the separately configured migration role needs DDL privileges; a restricted runtime role can further reduce privileges. The manual workflow requires trusted main, an exact reviewed SHA and an explicit enable variable; encrypted repository secrets do not supply independent required-reviewer approval on GitHub Free private repositories. No production security audit, email verification, recovery provider, shared invitations, external connectors or continuous background execution is included. All training and writes finish before the HTTP response; function lifetime after a response is never relied upon. Monitor free-tier database growth from immutable policy snapshots and histories.
 
 ## Legacy migration
 

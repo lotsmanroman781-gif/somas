@@ -1,8 +1,8 @@
-# SOMAS MVP v1.2
+# SOMAS MVP v1.3
 
 SOMAS (Self-Organizing Multi-Agent System) is a research application: a Manager designs a specialist team around a business objective. Each authenticated person owns a private Manager, organizations, specialists, independently trainable NumPy policies, draft runs, and training history.
 
-The v1.2 deployment target is **Cloudflare Pages Free → Pages Functions `/api/*` → FastAPI on Render Free → PostgreSQL on Neon Free**. SQLAlchemy 2.x uses the async psycopg 3 driver throughout; Alembic owns schema changes. MongoDB and SQLite are not runtime databases.
+The v1.3 deployment target is **Cloudflare Pages Free → Pages Functions `/api/*` → native FastAPI on Vercel Hobby → PostgreSQL on Neon Free** for personal non-commercial development. SQLAlchemy 2.x uses async psycopg 3 throughout; Alembic owns schema changes. The same `app/main.py` runs locally and on Vercel with Python 3.12. MongoDB and SQLite are not runtime databases.
 
 The dashboard and v1.1 API contracts are preserved. Team design is not a fixed CEO/CTO/CFO chart: the Manager selects from the capability catalog. Demo outputs are simulated plans; optional AI outputs are unverified drafts. The system performs no external business actions.
 
@@ -32,9 +32,9 @@ npm run dev
 
 Open **http://localhost:8788**. Pages Functions forwards requests to `127.0.0.1:8000`; the browser uses only relative `/api/...` URLs. `.dev.vars` must contain the same proxy secret as the backend. Never use its example value in the cloud. A direct local dashboard also exists at `http://127.0.0.1:8000`, but when the gateway secret is set, use the proxy for authenticated API requests.
 
-On macOS/Linux, activate with `source .venv/bin/activate` and use `export NAME='value'` instead of PowerShell `$env:NAME`. `.env.example` documents settings; `.env` is **not automatically loaded**. `python run.py` selects a psycopg-compatible Windows event loop; Render runs Linux.
+On macOS/Linux, activate with `source .venv/bin/activate` and use `export NAME='value'` instead of PowerShell `$env:NAME`. `.env.example` documents settings; `.env` is **not automatically loaded**. `python run.py` selects a psycopg-compatible Windows event loop; Vercel runs Linux.
 
-Stop local services with `docker compose stop`. The local named PostgreSQL volume preserves data. Nothing writes runtime accounts or neural policies to Render's filesystem.
+Stop local services with `docker compose stop`. The local named PostgreSQL volume preserves data. Accounts, sessions and neural weights persist exclusively in PostgreSQL, including across function restarts.
 
 ## Tests
 
@@ -48,6 +48,8 @@ npm test
 python -m ruff check app tests scripts migrations --select F,E9
 python -m ruff format --check app tests scripts migrations
 npx wrangler pages functions build functions --outdir .wrangler/pages-build
+python -m pip install -r requirements.txt --target .vercel-check/vendor
+python scripts/check_vercel_bundle.py
 ```
 
 Without `SOMAS_TEST_DATABASE_URL`, database tests are explicitly skipped; that is not a full validation. Node must be on PATH for the live proxy test. CI uses PostgreSQL 17 and Node 22 and runs the API, importer, restart, concurrency, proxy, and migration tests. No paid AI service is used in tests.
@@ -65,6 +67,8 @@ Without `SOMAS_TEST_DATABASE_URL`, database tests are explicitly skipped; that i
 - Durable database rate limiting, strict Origin checks, secure cookies, CSRF protection, and a secret-authenticated API proxy.
 
 The private owner model remains the active authorization model. Membership rows are created for owners; there is no invitations UI or sharing API. An editor/viewer schema role does not grant access through the existing owner-only APIs.
+
+To verify a privately configured Neon `DATABASE_URL` without modifying data, run `python scripts/check_database.py`. After schema initialization, add `--schema` to verify revision `0001_v12`. Both `postgresql://` and `postgresql+psycopg://` are accepted; the backend selects psycopg 3 automatically. Keep Neon's TLS query parameters intact.
 
 ## API
 
@@ -99,8 +103,10 @@ The utility opens SQLite read-only, rejects unowned v1.0 data and forged referen
 
 ## Deployment and research limits
 
-Follow [DEPLOY_RENDER_CLOUDFLARE_NEON.md](DEPLOY_RENDER_CLOUDFLARE_NEON.md) for exact free-tier settings and the Alice/Bob restart smoke test. See [ARCHITECTURE.md](ARCHITECTURE.md) for the schema and security boundaries.
+Follow [DEPLOY_VERCEL_CLOUDFLARE_NEON.md](DEPLOY_VERCEL_CLOUDFLARE_NEON.md) for exact Free-plan settings and the Alice/Bob persistence smoke test. See [ARCHITECTURE.md](ARCHITECTURE.md) for the schema and security boundaries.
+
+Vercel uses `NullPool` with Neon's pooled TLS URI; local development retains a small bounded pool. Startup validates revision `0001_v12` and never migrates. Schema upgrades are separately reviewed local commands or the disabled-by-default manual GitHub workflow. Pages now uses `BACKEND_ORIGIN`, `APPROVED_BACKEND_HOSTNAME` and the shared `SOMAS_PROXY_SECRET`; the production backend hostname must match exactly. No cloud credentials or hosted deployment are included.
 
 The research hypothesis remains unproven: no benchmark establishes that trainable routing outperforms heuristics or LLM-only organization design. Single-example training can overfit. Feedback is supervised, not automatic reinforcement learning from verified business outcomes. Execution is sequential planning, not autonomous graph scheduling.
 
-Email verification, password recovery, shared business invitations, and a production security audit remain absent. Render Free sleeps after idle periods; Neon can suspend idle compute. A cold start is not continuous agent work. Keep optional AI keys unset for free demo use. `auto` organization mode also stays in demo; only explicit `ai` mode invokes a funded API.
+Email verification, password recovery, shared business invitations, and a production security audit remain absent. Vercel functions and Neon have cold starts and Free-plan limits. Work completes within HTTP requests; no background process survival is assumed. Keep optional AI keys unset for free demo use. `auto` organization mode also stays in demo; only explicit `ai` mode invokes a funded API.

@@ -7,10 +7,12 @@ function error(status, detail) {
 }
 
 function backendOrigin(env) {
-  const target = new URL(env.RENDER_BACKEND_ORIGIN);
+  const target = new URL(env.BACKEND_ORIGIN);
   const local = env.ALLOW_LOCAL_BACKEND === '1' && target.protocol === 'http:' &&
     ['localhost', '127.0.0.1'].includes(target.hostname);
-  if ((!local && (target.protocol !== 'https:' || !target.hostname.endsWith('.onrender.com'))) ||
+  const approved = target.protocol === 'https:' && target.hostname.endsWith('.vercel.app') &&
+    target.hostname === env.APPROVED_BACKEND_HOSTNAME;
+  if ((!local && !approved) ||
       target.username || target.password || target.pathname !== '/' || target.search || target.hash ||
       (!local && target.port)) throw new Error('Invalid backend origin');
   if (!local && (!env.SOMAS_PROXY_SECRET || env.SOMAS_PROXY_SECRET.length < 32))

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 engine = None
 sessions = None
@@ -30,8 +31,24 @@ def database_url(value=None):
 
 
 def make_engine(value=None):
+    url = database_url(value)
+    if os.getenv("VERCEL") == "1":
+        # Each short transaction returns its connection to Neon's external pooler.
+        # No idle connections or cross-event-loop connections survive a warm invocation.
+        if url.host not in ("localhost", "127.0.0.1", "::1") and not (
+            url.host
+            and url.host.endswith(".neon.tech")
+            and url.host.split(".")[0].endswith("-pooler")
+        ):
+            raise RuntimeError("Vercel requires the Neon pooled DATABASE_URL")
+        return create_async_engine(
+            url,
+            poolclass=NullPool,
+            hide_parameters=True,
+            connect_args={"prepare_threshold": None, "connect_timeout": 10},
+        )
     return create_async_engine(
-        database_url(value),
+        url,
         pool_pre_ping=True,
         pool_size=3,
         max_overflow=2,

@@ -13,10 +13,11 @@ Review changes, stage the intended source/configuration/documentation files, and
 When you choose to publish the source changes to your private repository:
 
 ```powershell
-git add app frontend functions migrations scripts tests .github .gitignore .env.example .dev.vars.example requirements.txt requirements-dev.txt package.json package-lock.json pytest.ini alembic.ini compose.yaml render.yaml run.py start_windows.bat start_mac_linux.sh README.md ARCHITECTURE.md RELEASE_NOTES.md GITHUB_PUBLISH.md DEPLOY_RENDER_CLOUDFLARE_NEON.md
+git add app frontend functions migrations scripts tests .github .gitignore .env.example .dev.vars.example .python-version .vercelignore vercel.json requirements.txt requirements-dev.txt package.json package-lock.json pytest.ini alembic.ini compose.yaml run.py start_windows.bat start_mac_linux.sh README.md ARCHITECTURE.md RELEASE_NOTES.md GITHUB_PUBLISH.md DEPLOY_RENDER_CLOUDFLARE_NEON.md DEPLOY_VERCEL_CLOUDFLARE_NEON.md
+git add -u
 git diff --cached --stat
-git commit -m "Upgrade SOMAS v1.2 to PostgreSQL and Cloudflare Render deployment"
+git commit -m "Prepare SOMAS v1.3 for native Vercel FastAPI deployment"
 git push origin HEAD
 ```
 
-Use the connected GitHub account/credential manager; never put an access token in the remote URL. Connecting the repository to a cloud host is a separate, explicit deployment action. Follow [the deployment guide](DEPLOY_RENDER_CLOUDFLARE_NEON.md) for the Free plans and private secrets configuration.
+Use the connected GitHub account/credential manager; never put an access token in the remote URL. Connecting the repository to a cloud host is a separate, explicit deployment action. Follow [the deployment guide](DEPLOY_VERCEL_CLOUDFLARE_NEON.md) for the Free plans and private secrets configuration. Review tracked deletions staged by `git add -u` as well as additions. A push can trigger an already connected host's automatic deployment; inspect your account integration settings before pushing.

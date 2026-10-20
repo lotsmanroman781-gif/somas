@@ -46,3 +46,7 @@ jobs:
         run: npm test
       - name: Compile Pages Functions
         run: npx wrangler pages functions build functions --outdir /tmp/somas-pages-build
+      - name: Native Python runtime bundle preflight (no cloud or database credentials)
+        run: |
+          python -m pip install -r requirements.txt --target .vercel-check/vendor
+          python scripts/check_vercel_bundle.py

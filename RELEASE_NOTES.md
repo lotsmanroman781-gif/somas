@@ -1,4 +1,18 @@
-# SOMAS v1.2 — PostgreSQL deployment upgrade
+# SOMAS v1.3 — Native Vercel backend
+
+Unreleased source upgrade, October 21, 2026. No public deployment, hosted migration or new cloud resources were created.
+
+- Kept the existing FastAPI application, authentication, owner isolation, Manager/specialist agents, demo execution, NumPy training and PostgreSQL schema.
+- Added native FastAPI configuration, Python 3.12 selection and runtime bundle exclusions; removed the Render deployment manifest. Cloudflare remains the frontend host.
+- Switched the gateway to `BACKEND_ORIGIN` plus an exact `APPROVED_BACKEND_HOSTNAME` pin. Cookies, CSRF, origin checks, gateway authentication and SSRF defenses remain.
+- Vercel uses NullPool with the Neon external pooler; startup validates schema without migrating. Secure cookies and gateway configuration are mandatory under Vercel.
+- Added a disabled-by-default, manually dispatched migration workflow with reviewed main SHA, explicit confirmation and encrypted repository secret. GitHub Free private repository independent approval limitations are documented.
+- Added serverless cold/warm/restart tests, schema fail-closed checks, isolated native imports and a runtime dependency size/import preflight, also configured in Linux CI.
+- Added the v1.3 deployment guide and retained the v1.2 Render guide as a clearly marked historical reference.
+
+Validation: **44 Python tests passed** against disposable local PostgreSQL 17.5, including real Wrangler/workerd, live proxy authentication, migrations, restart persistence and Vercel lifecycle cases. Six standalone JavaScript contract tests passed; the optional live case is exercised by the Python integration suite. Pages Function compilation and Ruff checks passed. The local Windows/Python 3.12 staged runtime measured **106.1 MiB** and passed native imports. Actual Linux Vercel packaging, account settings and hosted browser acceptance remain deployment-time checks; no hosted environment was accessed.
+
+## SOMAS v1.2 — PostgreSQL deployment upgrade
 
 Unreleased source upgrade, October 20, 2026. No public deployment or cloud resources were created.
 

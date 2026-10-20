@@ -304,7 +304,7 @@ async def update_profile(user_id, name):
 
 async def throttle(key, expires):
     async with database.scope() as session:
-        # Expiry is opportunistic and durable, not a background job on Render Free.
+        # Expiry is opportunistic and durable; no background worker is required.
         await session.execute(delete(RateLimit).where(RateLimit.expires_at < stamp()))
         statement = pg_insert(RateLimit).values(id=key, count=1, expires_at=expires)
         row = await session.execute(

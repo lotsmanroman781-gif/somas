@@ -46,3 +46,5 @@ exports/
 *.dump
 *.backup
 .pgpass
+.vercel/
+.vercel-check/

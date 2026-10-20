@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { onRequest } from '../functions/api/[[path]].js';
 
 const secret = 'test-proxy-secret-32-characters-long';
-const env = { RENDER_BACKEND_ORIGIN: 'https://somas-api.onrender.com', SOMAS_PROXY_SECRET: secret };
+const env = { APPROVED_BACKEND_HOSTNAME: 'somas-api.vercel.app', BACKEND_ORIGIN: 'https://somas-api.vercel.app', SOMAS_PROXY_SECRET: secret };
 const request = (path = '/api/auth/me', options = {}) => new Request(`https://somas.test${path}`, options);
 const invoke = (req, overrides = {}) => onRequest({ request: req, env: { ...env, ...overrides } });
 
 test('forwards method, query, body, cookies and CSRF to fixed backend; preserves cookies', async () => {
   const original = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
-    assert.equal(url.href, 'https://somas-api.onrender.com/api/auth/login?next=https://evil.test');
+    assert.equal(url.href, 'https://somas-api.vercel.app/api/auth/login?next=https://evil.test');
     assert.equal(options.method, 'POST');
     assert.equal(new TextDecoder().decode(options.body), '{"hello":"world"}');
     assert.equal(options.headers.get('Cookie'), 'somas_session=opaque');
@@ -42,11 +42,14 @@ test('rejects cross-origin and missing-origin writes', async () => {
 });
 
 test('rejects arbitrary destinations and incomplete configuration', async () => {
-  for (const origin of ['https://evil.test', 'http://somas-api.onrender.com', 'https://somas-api.onrender.com/path',
-    'https://user:pass@somas-api.onrender.com', 'https://somas-api.onrender.com?x=1']) {
-    assert.equal((await invoke(request(), { RENDER_BACKEND_ORIGIN: origin })).status, 503);
+  for (const origin of ['https://evil.test', 'http://somas-api.vercel.app', 'https://somas-api.vercel.app/path',
+    'https://user:pass@somas-api.vercel.app', 'https://somas-api.vercel.app?x=1']) {
+    assert.equal((await invoke(request(), { BACKEND_ORIGIN: origin })).status, 503);
   }
   assert.equal((await invoke(request(), { SOMAS_PROXY_SECRET: '' })).status, 503);
+  assert.equal((await invoke(request(), { APPROVED_BACKEND_HOSTNAME: '' })).status, 503);
+  assert.equal((await invoke(request(), { BACKEND_ORIGIN: 'https://other-project.vercel.app' })).status, 503);
+  assert.equal((await invoke(request(), { BACKEND_ORIGIN: 'https://somas-api.onrender.com' })).status, 503);
   assert.equal((await invoke(request('/static/app.js'))).status, 404);
 });
 
@@ -85,7 +88,7 @@ test('rejects upstream cookies with Domain override', async () => {
 test('live same-origin proxy cookie, CSRF, isolation and logout roundtrip', {
   skip: !process.env.SOMAS_E2E_BACKEND,
 }, async () => {
-  const localEnv = { RENDER_BACKEND_ORIGIN: process.env.SOMAS_E2E_BACKEND, ALLOW_LOCAL_BACKEND: '1',
+  const localEnv = { BACKEND_ORIGIN: process.env.SOMAS_E2E_BACKEND, ALLOW_LOCAL_BACKEND: '1',
     SOMAS_PROXY_SECRET: process.env.SOMAS_E2E_SECRET };
   let cookie = '', csrf = '';
   async function api(path, method = 'GET', data, includeCsrf = true) {

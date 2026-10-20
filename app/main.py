@@ -1,4 +1,4 @@
-"""SOMAS v1.2: authenticated per-user organizations and independently trained agents."""
+"""SOMAS v1.3: the same FastAPI app serves local and native Vercel runtimes."""
 
 from __future__ import annotations
 import asyncio
@@ -19,7 +19,7 @@ from .catalog import CAP_KEYS, CAPABILITIES, STRATEGIES
 
 @asynccontextmanager
 async def lifespan(app):
-    if os.getenv("SOMAS_SECURE_COOKIES") == "1" and (
+    if (os.getenv("SOMAS_SECURE_COOKIES") == "1" or os.getenv("VERCEL") == "1") and (
         len(os.getenv("SOMAS_PROXY_SECRET", "")) < 32
         or not os.getenv("SOMAS_ALLOWED_ORIGINS")
     ):
@@ -35,12 +35,13 @@ async def lifespan(app):
 
 app = FastAPI(
     title="SOMAS - Self Organizing Multi Agent System",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 app.add_middleware(SecurityMiddleware)
 PUBLIC = Path(__file__).resolve().parents[1] / "frontend"
-app.mount("/static", StaticFiles(directory=PUBLIC / "static"), name="static")
+if os.getenv("VERCEL") != "1":
+    app.mount("/static", StaticFiles(directory=PUBLIC / "static"), name="static")
 
 
 @app.exception_handler(RequestValidationError)
@@ -70,7 +71,7 @@ async def policy_conflict(request, exc):
 
 @app.get("/healthz")
 async def healthz():
-    return {"status": "ok", "version": "1.2.0"}
+    return {"status": "ok", "version": "1.3.0"}
 
 
 @app.get("/readyz")
@@ -250,6 +251,12 @@ class WorkerFeedback(BaseModel):
 
 @app.get("/")
 async def home():
+    if os.getenv("VERCEL") == "1":
+        return {
+            "service": "SOMAS API",
+            "version": "1.3.0",
+            "frontend": "Cloudflare Pages",
+        }
     return FileResponse(PUBLIC / "index.html")
 
 
@@ -257,7 +264,7 @@ async def home():
 async def status(user=Depends(auth.current_user)):
     model = await store.load_policy(user["id"], "root_manager")
     return {
-        "version": "1.2.0",
+        "version": "1.3.0",
         "mode": "ai_available" if engine.api_available() else "demo_only",
         "has_openai_key": engine.api_available(),
         "openai_model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini")

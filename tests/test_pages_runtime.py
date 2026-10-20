@@ -60,7 +60,7 @@ async def test_pages_runtime_cookie_roundtrip(postgres_database, tmp_path):
                         "--compatibility-date",
                         "2026-10-20",
                         "--binding",
-                        "RENDER_BACKEND_ORIGIN=http://127.0.0.1:18082",
+                        "BACKEND_ORIGIN=http://127.0.0.1:18082",
                         "--binding",
                         "ALLOW_LOCAL_BACKEND=1",
                         "--binding",

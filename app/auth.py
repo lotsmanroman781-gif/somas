@@ -140,9 +140,11 @@ async def destroy_session(session):
 
 def secure_cookies(request):
     # Do not trust arbitrary X-Forwarded-Proto headers.
-    return request.url.scheme == "https" or os.getenv(
-        "SOMAS_SECURE_COOKIES", ""
-    ).lower() in ("true", "1")
+    return (
+        os.getenv("VERCEL") == "1"
+        or request.url.scheme == "https"
+        or os.getenv("SOMAS_SECURE_COOKIES", "").lower() in ("true", "1")
+    )
 
 
 def set_cookie(response, request: Request, token):
