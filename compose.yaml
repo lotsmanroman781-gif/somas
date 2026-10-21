@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: somas
+      POSTGRES_PASSWORD: local-development-only
+      POSTGRES_DB: somas
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["somas_postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U somas -d somas"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  somas_postgres:

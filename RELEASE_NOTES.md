@@ -1,22 +1,18 @@
-# SOMAS v1.1 — User Workspaces and Private Agent Ownership
+# SOMAS v1.2 — PostgreSQL deployment upgrade
 
-October 20, 2026
+Unreleased source upgrade, October 20, 2026. No public deployment or cloud resources were created.
 
-## Shipped
+- Replaced SQLite persistence and the unfinished MongoDB adaptation with PostgreSQL, SQLAlchemy 2.x async sessions and psycopg 3. Added frozen Alembic schema migrations with serialized startup migration execution.
+- Added relational users/sessions, organizations/memberships, Manager-defined departments/relationships, owned agents/config JSONB, binary neural policies and immutable versions, runs, feedback, conversations, decisions and audit logs.
+- Preserved v1.1 registration/login/logout/profile/password behavior, owner-based 404 isolation, Manager team design, NumPy filters, verified-only training, demo drafts, exports and inherited specialist policies.
+- Added transactional graph/run/training persistence and version-based conflict detection. Added durable auth/request limits, strict Origin/body checks and sanitized failures.
+- Moved the existing dashboard to `frontend/`, retained its design/escaping, and added the same-origin Pages Function proxy with secure cookie/CSRF forwarding and a shared backend gateway secret.
+- Added Render Free, local PostgreSQL Compose, Cloudflare settings examples, CI, an explicit idempotent v1.1 SQLite importer, and a free-tier Neon/Render/Pages deployment guide.
+- Added inspection/edit APIs for owned specialists and inspection APIs for departments, relationships, memberships, conversations, decisions and feedback.
+- `auto` design mode now remains demo even if an AI key exists. Only explicit AI mode invokes the optional paid API.
 
-- Local registration and login, email/password-based sessions, logout, profile editing, password changes.
-- Per-user isolated Manager policy weights, organization graphs, specialist weights, histories, runs and feedback.
-- Private **My Agents** directory and user account controls in the dashboard.
-- Stronger SQLite schema using composite foreign keys for owner/org integrity.
-- Account-scoped routes, hardened cookies and CSRF checks on account-authenticated writes.
-- Tests for cross-user access denial, forged agent references, CSRF, session revocation and older SOMAS behavior.
-- Preserves demo-mode training and optional frozen-LLM text drafting.
+Validation: **37 Python tests passed** against PostgreSQL 17.5, including migration/import/restart/concurrency tests and a live FastAPI-to-Pages proxy roundtrip. The actual Wrangler/workerd runtime also passed static asset, registration, cookie, CSRF, profile and logout checks. Six standalone JavaScript proxy contract tests passed (their optional live case is exercised by the Python integration suite). Pages Functions compilation, Ruff, formatting, and dependency checks passed. Hosted Cloudflare/Render/Neon acceptance still requires account configuration and the documented browser smoke test. No benchmark superiority, real business execution, automatic reinforcement learning, shared-workspace invitation flow, email verification/recovery, or production security certification is claimed.
 
-## Not yet included
+## Previous v1.1
 
-- Business-level shared workspaces, user invitations, team roles or administrator management.
-- Email verification, password-reset email delivery, 2FA, OAuth or SSO.
-- Production-ready authorization auditing, durable distributed login rate limiting, cloud secrets/billing quotas, production HTTPS setup, data encryption at rest, GDPR controls or security certification.
-- Real customer workflow integrations or autonomous business execution.
-
-**v1.0 data will NOT be automatically claimed by the first registered account.** See README for the safe new DB convention.
+Added private human accounts, opaque hashed sessions, CSRF defenses, independently owned neural policies and the My Agents dashboard. The legacy SQLite database is never automatically claimed by a new user. v1.2 leaves source SQLite files untouched and imports only explicitly authorized, owned v1.1 records.

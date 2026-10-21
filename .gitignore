@@ -33,3 +33,16 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# Cloudflare, Node and local secret files
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+exports/
+*.bson
+*.archive
+*.dump
+*.backup
+.pgpass

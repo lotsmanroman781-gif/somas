@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: somas-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-proxy-headers --no-access-log
+    healthCheckPath: /readyz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: DATABASE_URL
+        sync: false
+      - key: SOMAS_SECURE_COOKIES
+        value: "1"
+      - key: SOMAS_ALLOW_PUBLIC_SIGNUP
+        value: "false"
+      - key: SOMAS_PROXY_SECRET
+        sync: false
+      - key: SOMAS_ALLOWED_ORIGINS
+        sync: false

@@ -1,109 +1,72 @@
-# SOMAS 1.1 — Architecture & Research Notes
+# SOMAS v1.2 architecture and research notes
 
-## Working claim (not proven novelty)
-
-A Manager with its own lightweight neural filter and a frozen LLM could learn to choose organizational capabilities and structures more efficiently than a fixed multi-agent workflow. Worker specialists maintain their own independent trainable neural policies. This is a **hypothesis**, not a scientific conclusion.
-
-## Runtime flow
+## Runtime
 
 ```mermaid
-flowchart TD
-    B[Business objective] --> S[Deterministic feature encoder]
-    S --> N[Manager-owned trainable MLP]
-    N --> P[Candidate capabilities and reasoning priorities]
-    P --> L{Real LLM enabled?}
-    L -->|Yes| O[LLM proposes an organization]
-    L -->|No| F[Local baseline produces an organization]
-    O --> V[Schema and capability validation]
-    F --> V
-    V --> G[Org graph: agents, reporting, responsibilities]
-    G --> A[Specialist-owned trainable filters]
-    A --> X{Run drafts?}
-    X -->|Demo| D[Simulated planning deliverables]
-    X -->|AI| R[LLM produces specialist text drafts]
-    D --> H[Optional human review and verified labels]
-    R --> H
-    H -->|explicitly verified corrections| T[Backpropagate through SMALL agent policies]
-    T --> N
+flowchart LR
+    Browser -->|same-origin cookies + CSRF| Pages[Cloudflare Pages frontend]
+    Pages --> Gateway[Pages Functions /api/*]
+    Gateway -->|HTTPS + private proxy secret| API[FastAPI on Render]
+    API -->|SQLAlchemy async / psycopg 3 / TLS| PG[Neon PostgreSQL]
+    API --> Encoder[Deterministic feature encoder]
+    Encoder --> Manager[Manager-owned NumPy filter]
+    Manager --> Plan[Validated organization graph]
+    Plan --> Workers[Specialist-owned NumPy filters]
+    Workers --> Drafts[Simulated plans or explicit AI drafts]
+    Drafts --> Human[Human-verified corrections]
+    Human -->|bounded SGD; version compare-and-set| PG
 ```
 
-## Actual neural network
+Static assets live in `frontend/`; `functions/api/[[path]].js` is only an API gateway. Python, NumPy, training, and all database operations run on Render. All durable state lives in PostgreSQL. SQLAlchemy's async engine uses psycopg 3, at most five pooled connections per process, pre-ping, disabled prepared statements for pooler compatibility, and transaction-local statement/lock timeouts. Remote connections require TLS.
 
-- Input: 128-dimensional deterministic hashed text features; 12 numeric/categorical business state features.
-- Architecture per policy: linear 140→48, tanh, linear 48→K, sigmoid; K=13 for Manager capability labels and K=6 for workers' strategy labels.
-- Manager trainable parameter count: 140×48 + 48 + 48×13 + 13 = **7,405**.
-- Worker trainable parameter count: 140×48 + 48 + 48×6 + 6 = **7,062**.
-- Data storage: SQLite BLOB of NumPy compressed matrix values; independent weights per agent ID.
-- Train: manually verified capability corrections → multilabel binary cross-entropy → analytic backpropagation / SGD; worker strategy label → same learning function.
-- The frozen LLM does not receive any gradient updates and has no direct access to the neural weights.
-- No API key is needed to train and use these independently owned policies.
+Alembic is the only schema-management path. `0001_v12` contains frozen PostgreSQL DDL; it does not import evolving runtime models. Startup checks the Alembic revision. Deployment runs migrations before Uvicorn; a transaction-scoped PostgreSQL advisory lock serializes migrations. Runtime schema creation and SQLite/MongoDB fallbacks do not exist.
 
-## Explicit separation of responsibilities
+## Relational schema
 
-**Manager**: proposes and ranks capability requirements; selects organizational structure; delegates responsibilities; later reorganizes.
+| Table | Purpose and integrity |
+|---|---|
+| `users` | Normalized unique email, salted PBKDF2 hashes, session epoch |
+| `sessions` | Hashed token primary key, owner FK, expiry, CSRF, epoch |
+| `organizations` | Human owner, Manager reference, business/plan JSONB, status |
+| `memberships` | Organization + person membership, owner/editor/viewer role constraint |
+| `departments` | Manager-defined department names/configuration per owner/org |
+| `agents` | Composite owner/agent identity, owner/org/department FKs, config JSONB |
+| `relationships` | Reporting/review edges between owned agents |
+| `policies` | Owner/agent key, current version, compressed NumPy weights as BYTEA |
+| `policy_versions` | Immutable version snapshots with weight bytes and timestamp |
+| `runs` | Owner/org FK, mode, status, outputs JSONB |
+| `feedback` | Owner/org/optional specialist FKs, labels, verification, trained version |
+| `conversations` | Owner/org/run, sender/receiver, actual planning context messages |
+| `decisions` | Manager/worker filter decisions with owner/org/agent/run context |
+| `audit_logs` | Account-scoped application events; no credentials |
+| `rate_limits` | Hashed fixed-window abuse counters with expiry |
 
-**Small trainable neural filter**: produces context-dependent guidance to the Manager before an LLM call. It is not a language generator and cannot reason about an unlimited capability vocabulary.
+Each user owns an explicit Manager agent with ID `root_manager` within that user's composite namespace, even before creating a business. Specialists have separate policies. Organizations create an owner membership automatically; APIs intentionally retain v1.1 owner-only access. Sharing/invitation workflows are not implemented. Schema roles alone grant no API access.
 
-**Optional LLM**: generates detailed structured organization proposals and specialist work drafts when configured. It is not permitted to use external actions or grant authority.
+All business reads, updates, training, lists and exports require the authenticated owner ID. Composite foreign keys prevent an agent, run or feedback record from claiming another owner's organization. Graph creation inserts the organization, departments, specialists, policies, relationships, Manager decision and event in one transaction. Foreign IDs receive 404 without confirming their existence.
 
-**Policy / validation layer**: caps agent count, constrains allowed capabilities, requires compliance review for deterministic risk flags, records work as drafts, never executes external actions.
+Training computes gradients off the event loop, then uses `UPDATE ... WHERE version = expected_version` inside the same transaction as the immutable snapshot, feedback and audit event. A stale update raises HTTP 409 and rolls back bookkeeping. It does not silently overwrite another correction. Reorganization gives new specialists independent copies of matching old weights and retains their learned version.
 
-**Learning engine**: updates separately versioned neural policies only after explicit human-verified corrections.
+Runs save drafts, status, worker decisions, conversations and audit event in one transaction. The Manager's task assignments are recorded as planning messages. AI runs also record the previous four draft excerpts actually supplied to each next specialist. Demo outputs remain simulations; no real research or business actions are claimed. The execution loop is sequential, not a dependency scheduler.
 
-## Learning limits
+## Neural core and scientific limits
 
-The current feedback method is a minimal but *real* supervised gradient update. It is not reinforcement learning and is not automatic online improvement from verified business outcomes. Evaluation after a single label is prone to overfitting. Real continual specialization must add an experience replay dataset, validation splits, aggregate uncertainty metrics, positive/negative outcome attribution, leakage prevention, and per-business isolation.
+The existing network and serialization are preserved: 128 deterministic signed hashed text features plus 12 business-state values, linear `140 → 48`, tanh, linear `48 → K`, sigmoid. Manager K=13 yields 7,405 parameters; worker K=6 yields 7,062. Each agent's NumPy weight matrices are compressed separately. The frozen LLM receives guidance, not gradients or direct weight access.
 
-## Experimental baselines before claiming an invention
+Cold-start heuristics blend with neural predictions; selected capabilities are constrained by a finite catalog. Safety flags are deterministic checks outside the learned routing. Verified labels trigger supervised binary cross-entropy SGD, not automatic online reinforcement learning. Training iterations are fixed (250 Manager, 200 worker); LLM calls use a 15-second network timeout and no external tools. Only explicit AI mode can incur API charges. Request deadlines and user-visible errors bound the free-tier request path; interrupted writes must be checked in history before retrying.
 
-1. Fixed capability templates.
-2. Local heuristic capability routing (already included).
-3. Frozen LLM-only Manager (available with key by disabling learned routing experimentally).
-4. Frozen LLM with long-term retrieval memory.
-5. Trainable Manager filter with identical task data and token budgets.
+The hypothesis is that learned pre-LLM controllers improve organizational routing over fixed workflows. It remains unproven. Necessary comparisons include fixed templates, heuristics, LLM-only routing, retrieval memory, and learned filters under identical tasks/budgets. Evaluate held-out business domains and later timelines using task success, capability selection, latency, cost, unnecessary agents, policy errors and forgetting. No worldwide legal coverage, novel scientific result, or measured performance advantage is claimed.
 
-Split evaluation by business domain and timeline. Metrics: held-out task success, correct role selection, task latency, total LLM cost, unnecessary agent count, policy/regulatory errors, and catastrophic forgetting. No performance improvements are claimed here.
+## Browser and deployment security
 
-## Business breadth
+The browser calls only the Pages origin. Pages Functions accepts only `/api/*`, fixes destinations to the configured HTTPS `*.onrender.com` origin, disallows credentials/path/query in that origin, forwards cookies and CSRF, blocks redirects, strips hop-by-hop/CORS response headers and cookie Domain overrides, and disables private response caching. Local HTTP is available only with explicit `ALLOW_LOCAL_BACKEND=1`. Static CSP and XSS escaping remain intact.
 
-The architecture allows different team sizes, industry goals and geographic metadata, but a finite initial capability taxonomy is not exhaustive. Building for worldwide businesses requires locale-specific knowledge, laws, language evaluation, integrations, entity permissions, audit infrastructure, and verified human oversight.
+The proxy overwrites client identity and gateway-secret headers. Render verifies a shared 32+ character secret before serving API traffic and compares mutating browser Origins against an exact allowlist. Cookies are HttpOnly, Secure on HTTPS, SameSite=Strict, Path=/, with no Domain override. No credentialed cross-origin CORS is enabled. Forwarded protocol headers are not blindly trusted; Render uses `SOMAS_SECURE_COOKIES=1` and Uvicorn disables proxy-header trust.
 
-## Version 1.1 priorities
+Passwords retain salted PBKDF2-HMAC-SHA256 with 600,000 iterations, executed in a worker thread. Sessions store only token hashes, expire after seven days, and are checked against the user's session epoch. Password updates lock out concurrent session issuance and atomically revoke existing sessions. Login/signup and account request limits live in PostgreSQL; expired counters are cleaned opportunistically. JSON input is capped at 32 KiB and paginated reads at 100 rows. Request logs contain only status and duration, not URL queries, email, business text or secrets; SQLAlchemy hides bound parameters.
 
-- Benchmark data creator and independent evaluation harness.
-- Experience replay and incremental learning without catastrophic forgetting.
-- Domain-specific capability registries and organization schemas.
-- Project graph dependency planning rather than purely sequential draft execution.
-- Read-only connectors and authenticated permissions followed by human-gated write actions.
-- Multi-tenant storage, isolation, explicit consent, monitoring, rate limits, and audit exports.
-- Model-independent LLM adapters, local model support, and real-time streaming.
-- Dynamic agent spawning / modular expansion with measurable threshold to justify complexity.
+Isolation is application authorization plus database constraints, not PostgreSQL row-level security. Do not grant users direct database access. The deployment role must manage schema for startup migrations; a separately privileged migration role and restricted runtime role would further reduce privileges. No production security audit, email verification, recovery provider, shared invitations, external connectors or continuous background execution is included. Monitor free-tier database growth from immutable policy snapshots and histories.
 
-## Research context
+## Legacy migration
 
-This prototype is related to self-organizing multi-agent systems, lightweight pre-LLM neural controllers, dynamic communication graphs and offline policy learning. Similar ideas appear in work such as G-Designer, HarnessMDP and MetaCtrl. The overall concept should **not** be marketed as scientifically unprecedented without a rigorous literature review and comparative experiments.
-
----
-
-## v1.1: User ownership and neural policy isolation
-
-### Human user and AI agent are different entities
-
-`users` represent authenticated people; each owns a private SOMAS workspace. The root Manager is an AI agent whose policy key is `root_manager` **within that user's namespace**. Its neural policy is not global. Specialist agents have independent IDs and policies belonging to the same user.
-
-`users → orgs → agents → policies` is the ownership model. `runs`, `feedback`, and `events` are also scoped to the human owner.
-
-The Manager is responsible for creating a suitable organization for its owner, not giving itself server permissions. User authentication happens before the business request enters the Manager.
-
-### Database invariants
-
-- Every workspace query has a required `user_id` filter.
-- `(user_id,org_id)` has a composite foreign key for agent, run and feedback rows so an agent cannot claim another owner's org.
-- Policies are keyed by `(user_id,id)` rather than by globally accessible policy name.
-- Unauthorized lookups return `404` for foreign organization and agent IDs without disclosing their existence.
-- Password hashes use per-user PBKDF2 salts; opaque session tokens are stored only as SHA-256 hashes.
-- Cookie-authenticated write requests are verified with a session-specific CSRF header.
-
-### Limitations
-
-This is account isolation for a local MVP, not enterprise multitenancy. Users cannot share an org and there is no platform administrator role. SQLite provides no production row-level security, email verification or multi-node session infrastructure. Session brute-force controls are process-local; external, persistent controls are required for internet deployment.
+`scripts/migrate_sqlite_to_postgresql.py` is an explicit offline administration tool, not live persistence. It validates ownership and neural blob versions before writing, opens the source read-only, rejects v1.0 unowned data, and recreates normalized memberships/departments/graph records. A single transaction imports at most 10,000 derived rows. Repeated imports compare existing content; conflicts abort without overwriting. Existing hashed sessions and passwords survive. Only weight versions present in v1.1 can be imported; absent historical snapshots cannot be invented.

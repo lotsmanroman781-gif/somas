@@ -1,0 +1,3 @@
+RENDER_BACKEND_ORIGIN=http://127.0.0.1:8000
+ALLOW_LOCAL_BACKEND=1
+SOMAS_PROXY_SECRET=local-only-replace-with-a-random-32-character-secret

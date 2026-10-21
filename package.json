@@ -1,0 +1,11 @@
+{
+  "name": "somas-pages",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev frontend --port 8788",
+    "test": "node --test tests/proxy.test.js"
+  },
+  "devDependencies": {"wrangler": "^4.0.0"}
+}

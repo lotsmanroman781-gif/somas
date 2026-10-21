@@ -9,8 +9,12 @@ async function request(path,opts={}){
   const method=(opts.method||'GET').toUpperCase();
   const headers={'Content-Type':'application/json',...(opts.headers||{})};
   if(state.csrf && !['GET','HEAD','OPTIONS'].includes(method)) headers['X-CSRF-Token']=state.csrf;
-  const r=await fetch(path,{...opts,credentials:'same-origin',headers});
-  let data=await r.json();
+  let r;
+  try { r=await fetch(path,{...opts,credentials:'same-origin',headers,signal:AbortSignal.timeout(150000)}); }
+  catch { throw Error('The server is unavailable or waking up. Please retry shortly. Check history before repeating a write.'); }
+  let data;
+  try { data=await r.json(); }
+  catch { throw Error('The server is waking up or temporarily unavailable. Please retry shortly.'); }
   if(!r.ok){
     if(r.status===401 && !path.startsWith('/api/auth/')){showAuth();}
     throw Error(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail||data));
