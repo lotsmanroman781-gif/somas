@@ -1,0 +1,35 @@
+# Python environments, caches and local tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local credentials and environment variables
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime databases and generated state (including policy weights)
+data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Packaging
+build/
+dist/
+*.egg-info/

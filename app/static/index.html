@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SOMAS • Adaptive AI Organization Lab</title>
+<link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+<section id="auth-gate" class="auth-gate">
+  <div class="auth-card">
+    <div class="auth-brand">◈ SOMAS <span>v1.1</span></div>
+    <h1>Your own AI organization.</h1>
+    <p class="auth-lead">Create your private workspace. Your Manager, specialist agents, organizations and learned neural weights belong to your account.</p>
+    <div class="auth-switch"><button type="button" id="auth-login-tab" class="selected">Sign in</button><button type="button" id="auth-register-tab">Create account</button></div>
+    <form id="auth-form" autocomplete="on">
+      <label id="auth-name-line" class="hidden">Your name<input type="text" id="auth-name" name="display_name" minlength="2" maxlength="80" autocomplete="name" placeholder="Your name"/></label>
+      <label>Email<input type="email" id="auth-email" name="email" required maxlength="254" autocomplete="email" placeholder="you@company.com"/></label>
+      <label>Password<input type="password" id="auth-password" name="password" required autocomplete="current-password" placeholder="Your password"/></label>
+      <p id="auth-password-hint" class="muted hidden">Use at least 12 characters.</p>
+      <button class="primary auth-submit" type="submit" id="auth-submit">Sign in</button>
+      <p class="auth-error hidden" id="auth-error" role="alert"></p>
+    </form>
+    <p class="auth-note">Research MVP. Please use test data; email verification and password recovery are not yet available.</p>
+  </div>
+</section>
+<div class="shell hidden" id="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">◈</div><div><strong>SOMAS</strong><small>ORGANIZATION LAB <span class="v">V1.1</span></small></div></div>
+    <div class="nav-label">WORKSPACE</div>
+    <button class="nav active" id="nav-studio">▦ <span>Organization studio</span></button>
+    <button class="nav" id="nav-history">◷ <span>Recent organizations</span></button>
+    <button class="nav" id="nav-agents">♧ <span>My agents</span></button>
+    <div class="nav-label">INTELLIGENCE</div>
+    <div class="sidebar-kpi"><div class="eyebrow">Manager neural policy</div><strong id="side-policy">v0</strong><small id="side-params">Training-ready</small></div>
+    <div class="sidebar-profile">
+      <div class="eyebrow">SIGNED IN AS</div><strong id="account-name">Account</strong><small id="account-email"></small>
+      <button type="button" id="settings-btn" class="account-action">Account settings</button>
+      <button type="button" id="logout-btn" class="account-action">Sign out ↗</button>
+    </div>
+    <div class="sidebar-foot"><span class="dot" id="connection-dot"></span><span id="mode-label">Checking environment</span><p>Local research MVP. Agent actions are planning drafts only, never real business operations.</p></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><span>RESEARCH PLATFORM / <b>ORGANIZATION DESIGNER</b></span><span class="version">PROTO 1.1 <span class="pill">LOCAL FIRST</span></span></header>
+    <div class="content">
+      <section id="account-settings" class="card hidden account-settings">
+        <div class="section-head"><div><span class="eyebrow">MY ACCOUNT</span><h2>Account settings</h2></div><button id="close-settings" class="ghost" type="button">Close</button></div>
+        <form id="profile-form"><label>Display name<input id="profile-name" name="display_name" required minlength="2" maxlength="80"/></label><button class="secondary" type="submit">Update profile</button></form>
+        <form id="password-form"><h3>Change password</h3><label>Current password<input name="old_password" required type="password" autocomplete="current-password"/></label><label>New password (12+ characters)<input name="new_password" required type="password" minlength="12" autocomplete="new-password"/></label><button class="secondary" type="submit">Change password</button><p class="muted">Changing your password signs out all sessions.</p></form>
+      </section>
+      <section class="hero">
+        <div class="hero-tag"><span class="pulse"></span> SELF-ORGANIZING AGENT RESEARCH</div>
+        <h1>Build an AI organization<br/><em>around the problem.</em></h1>
+        <p>Describe your business goal. A Manager Agent uses its own trainable neural filter to select specialists, design a team, and prepare a work plan. Each specialist owns independent weights.</p>
+        <div class="hero-meta"><span>◉ Trainable policies</span><span>◇ Dynamic teams</span><span>◈ Versioned learning</span></div>
+      </section>
+      <div class="layout">
+        <section class="card composer" id="composer">
+          <div class="section-head"><div><span class="eyebrow">01 / BUSINESS INTAKE</span><h2>Define the objective</h2></div><span class="tiny-flag">MANAGER INPUT</span></div>
+          <form id="business-form">
+            <div class="input-grid"><label>Business name <input required name="name" maxlength="110" value="Northstar Commerce"/></label><label>Industry <input required name="industry" maxlength="120" value="E-commerce retail"/></label></div>
+            <label class="field">Primary business problem <textarea required name="goal" rows="4" minlength="12" maxlength="2200">Reduce late deliveries and customer complaints while improving order fulfillment.</textarea></label>
+            <div class="input-grid"><label>Company size<select name="size"><option value="micro">Micro / solo</option><option value="small" selected>Small business</option><option value="medium">Medium business</option><option value="enterprise">Enterprise</option></select></label><label>Country or region<input name="country" value="United States"/></label></div>
+            <div class="input-grid"><label>Language<input name="language" value="English"/></label><label>Approx. operating budget (USD)<input type="number" min="0" max="100000000" name="budget_usd" value="1000"/></label></div>
+            <div class="demo-examples"><span>TRY A SCENARIO</span><button type="button" class="chip" data-example="retail">Retail</button><button type="button" class="chip" data-example="software">SaaS</button><button type="button" class="chip" data-example="factory">Factory</button><button type="button" class="chip" data-example="agency">Agency</button></div>
+            <div class="actions"><label class="choice"><input type="checkbox" id="ai-design"/><span>Use real LLM if connected</span></label><button class="primary" type="submit" id="create-btn">Generate organization <span>↗</span></button></div>
+          </form>
+        </section>
+        <aside class="rightcol">
+          <section class="card metriccard"><div class="eyebrow">RESEARCH ENGINE</div><h3>Trainable intelligence,<br/>not fixed prompts.</h3><div class="flow-mini"><div>BUSINESS STATE</div><i>↓</i><div class="accent">TRAINABLE NEURAL FILTER</div><i>↓</i><div>MANAGER / FROZEN LLM</div><i>↓</i><div>DYNAMIC AGENT TEAM</div></div><p>Weights update only after explicitly verified corrections. The LLM stays frozen.</p></section>
+          <section class="card events"><div class="section-head compact"><h3>Activity log</h3><button class="textbutton" id="refresh-btn">Refresh ↻</button></div><div id="events-list" class="events-list"><p class="muted">No events yet.</p></div></section>
+        </aside>
+      </div>
+      <section class="card results hidden" id="results">
+        <div class="section-head"><div><span class="eyebrow">02 / ORGANIZATION DESIGN</span><h2 id="result-name">Your agent organization</h2><p id="result-desc" class="muted"></p></div><span id="topology-badge" class="pill">FLAT TEAM</span></div>
+        <div class="stats"><div><span>Specialist agents</span><strong id="agent-count">0</strong></div><div><span>Manager policy</span><strong id="policy-version">v0</strong></div><div><span>Planning mode</span><strong id="planning-mode">DEMO</strong></div><div><span>Human approvals</span><strong id="approval-mode">No flags</strong></div></div>
+        <div class="two-col">
+          <div><h3 class="minor-heading">Organization graph</h3><div id="org-graph" class="org-graph"></div><p class="muted small">Organizational links are planning relationships, not live permissions.</p></div>
+          <div><h3 class="minor-heading">Manager neural decisions</h3><div id="signals" class="signals"></div></div>
+        </div>
+        <div class="section-head subsection"><div><h3>Specialist workforce</h3><p class="muted">Each specialist stores its own independent policy version.</p></div></div>
+        <div id="agent-cards" class="agents-grid"></div>
+        <div class="results-actions"><button class="primary" id="run-demo">Run planning simulation</button><button class="secondary" id="run-ai">Generate AI work drafts</button><button class="secondary" id="reorg-btn">Reorganize using current learning</button><button class="ghost" id="export-btn">Export JSON ↓</button></div>
+      </section>
+      <section class="card hidden" id="execution"><div class="section-head"><div><span class="eyebrow">03 / PLAN EXECUTION</span><h2>Specialist work drafts</h2></div><span class="pill">NO EXTERNAL ACTIONS</span></div><p class="alert">These are planning drafts. Demo mode simulates outputs; AI mode generates text using a configured LLM. Neither mode actually modifies business systems.</p><div id="execution-steps" class="deliverables"></div></section>
+      <section class="card hidden" id="feedback"><div class="section-head"><div><span class="eyebrow">04 / NEURAL LEARNING</span><h2>Teach the Manager</h2></div><span class="pill">HUMAN-VERIFIED LABELS</span></div><p class="muted">Correct the capability selection below. Checking “I verified” and submitting performs real gradient updates on the Manager's small neural network. Future organizations then use the new weights. A correction is not proof of business success.</p><form id="feedback-form"><label>Assessment score (1–5)<input type="number" name="score" min="1" max="5" value="4" required/></label><p class="eyebrow">Which capabilities were actually needed?</p><div id="feedback-caps" class="cap-checks"></div><label class="field">Review notes<textarea name="notes" rows="2" maxlength="600" placeholder="Why would these capabilities be a better choice?"></textarea></label><label class="choice"><input type="checkbox" name="verified" id="verify-checkbox"/><span>I personally verified this correction and authorize neural training</span></label><div class="actions"><span class="muted small">No training without verification and capability labels.</span><button class="primary" type="submit">Submit and train weights</button></div></form><div id="training-result" class="training-result hidden"></div></section>
+      <section class="card history hidden" id="my-agents">
+        <div class="section-head"><div><span class="eyebrow">PRIVATE AGENT DIRECTORY</span><h2>My agents</h2><p class="muted">These agents and their neural policies belong to your account only.</p></div><button class="ghost" id="agents-refresh">Refresh</button></div>
+        <div id="my-agents-list" class="agents-grid"></div>
+      </section>
+      <section class="card history hidden" id="history"><div class="section-head"><div><span class="eyebrow">ARCHIVE</span><h2>Recent organizations</h2></div><button class="ghost" id="history-refresh">Refresh</button></div><div id="history-list"></div></section>
+      <footer>SOMAS © Research MVP v1.1 · Private user workspaces · No automatic external actions · Not production security certified</footer>
+    </div>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
